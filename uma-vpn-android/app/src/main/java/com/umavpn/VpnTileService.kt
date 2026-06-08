@@ -69,7 +69,7 @@ class VpnTileService : TileService() {
             return
         }
 
-        // All permissions ready — toggle immediately from the tile
+        // All permissions granted — toggle immediately from the tile
         manager.toggle()
     }
 
@@ -96,63 +96,49 @@ class VpnTileService : TileService() {
 
     private fun updateTile(state: ConnectionState) {
         val tile = qsTile ?: return
+        tile.label = getString(R.string.tile_label)
         when (state) {
             is ConnectionState.Idle -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = getString(R.string.tile_label)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = getString(R.string.tile_subtitle_idle)
-                }
+                setSubtitle(tile, getString(R.string.tile_subtitle_idle))
             }
-
             is ConnectionState.FetchingServers -> {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = getString(R.string.tile_label)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = getString(R.string.tile_subtitle_fetching)
-                }
+                setSubtitle(tile, getString(R.string.tile_subtitle_fetching))
             }
-
             is ConnectionState.Connecting -> {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = getString(R.string.tile_label)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = if (state.total > 0) {
-                        getString(R.string.tile_subtitle_connecting, state.attempt, state.total, state.serverIp)
-                    } else {
-                        state.serverIp
-                    }
-                }
+                setSubtitle(tile, if (state.total > 0)
+                    getString(R.string.tile_subtitle_connecting, state.attempt, state.total, state.serverIp)
+                else state.serverIp)
             }
-
+            is ConnectionState.VerifyingGame -> {
+                tile.state = Tile.STATE_ACTIVE
+                setSubtitle(tile, getString(R.string.tile_subtitle_verifying))
+            }
             is ConnectionState.Connected -> {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = getString(R.string.tile_label)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = getString(
-                        R.string.tile_subtitle_connected,
-                        state.serverIp,
-                        String.format("%.0f", state.ping)
-                    )
-                }
+                val pingStr = String.format("%.0f", state.ping)
+                setSubtitle(tile, if (state.gameAccessible == true)
+                    getString(R.string.tile_subtitle_connected, state.serverIp, pingStr)
+                else
+                    getString(R.string.tile_subtitle_connected_unverified, state.serverIp, pingStr))
             }
-
             is ConnectionState.Error -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = getString(R.string.tile_label)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = getString(R.string.tile_subtitle_error)
-                }
+                setSubtitle(tile, getString(R.string.tile_subtitle_error))
             }
-
             is ConnectionState.Disconnecting -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = getString(R.string.tile_label)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = getString(R.string.tile_subtitle_disconnecting)
-                }
+                setSubtitle(tile, getString(R.string.tile_subtitle_disconnecting))
             }
         }
         tile.updateTile()
+    }
+
+    private fun setSubtitle(tile: android.service.quicksettings.Tile, text: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            tile.subtitle = text
+        }
     }
 }

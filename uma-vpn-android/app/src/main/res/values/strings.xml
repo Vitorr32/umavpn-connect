@@ -7,42 +7,56 @@
     <string name="tile_subtitle_idle">Tap to connect</string>
     <string name="tile_subtitle_fetching">Finding servers…</string>
     <string name="tile_subtitle_connecting">Trying %1$d/%2$d: %3$s</string>
-    <string name="tile_subtitle_connected">%1$s · %2$s ms</string>
-    <string name="tile_subtitle_error">All servers failed</string>
+    <string name="tile_subtitle_verifying">Verifying game…</string>
+    <string name="tile_subtitle_connected">%1$s · %2$s ms ✓</string>
+    <string name="tile_subtitle_connected_unverified">%1$s · %2$s ms</string>
+    <string name="tile_subtitle_error">Failed — tap to retry</string>
     <string name="tile_subtitle_disconnecting">Disconnecting…</string>
 
     <!-- Status labels -->
     <string name="status_disconnected">Disconnected</string>
     <string name="status_fetching">Finding servers…</string>
     <string name="status_connecting">Trying server %1$d of %2$d</string>
+    <string name="status_verifying">Verifying game access…</string>
     <string name="status_connected">Connected</string>
+    <string name="status_connected_unverified">Connected (unverified)</string>
     <string name="status_error">Connection error</string>
     <string name="status_disconnecting">Disconnecting…</string>
 
     <!-- Detail labels -->
     <string name="label_server">Server: %1$s</string>
     <string name="label_ping">Ping: %1$s ms</string>
-
-    <!-- Settings -->
-    <string name="settings_title">Settings</string>
-    <string name="label_timeout">Connection timeout per server: %1$d s</string>
-    <string name="hint_timeout">3 – 30 seconds. If a server doesn\'t respond within this time, the next one is tried automatically.</string>
+    <string name="label_game_accessible">Game server: accessible ✓</string>
+    <string name="label_game_blocked">Game server: blocked ✗</string>
+    <string name="label_game_unverified">Game server: not verified</string>
 
     <!-- Buttons -->
-    <string name="btn_connect">Connect to Umamusume</string>
+    <string name="btn_connect">Connect</string>
     <string name="btn_disconnect">Disconnect</string>
     <string name="btn_cancel">Cancel</string>
     <string name="btn_retry">Retry</string>
 
+    <!-- Version toggle -->
+    <string name="label_version_title">Game version</string>
+    <string name="btn_version_global">Global</string>
+    <string name="btn_version_japanese">Japanese</string>
+    <string name="hint_version_global">Uses non-Japanese servers only</string>
+    <string name="hint_version_japanese">Uses Japanese servers only (DMM / Cygames JP)</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="label_timeout">Connection timeout per server: %1$d s</string>
+    <string name="hint_timeout">3 – 30 s. Servers that don\'t respond within this time are skipped automatically.</string>
+
     <!-- Install banner -->
     <string name="banner_install_title">OpenVPN for Android required</string>
-    <string name="banner_install_body">This app needs "OpenVPN for Android" by Arne Schwabe (package: de.blinkt.openvpn). Note: this is different from "OpenVPN Connect" by OpenVPN Inc.</string>
+    <string name="banner_install_body">This app needs "OpenVPN for Android" by Arne Schwabe (package: de.blinkt.openvpn). This is different from "OpenVPN Connect" by OpenVPN Inc.</string>
     <string name="btn_install_openvpn">Install from Play Store</string>
     <string name="btn_open_openvpn">Open it</string>
 
-    <!-- How-to note -->
+    <!-- Quick tile hint -->
     <string name="hint_tile">Tip: Add the UmaVPN tile to your Quick Settings panel for one-tap access without opening this app.</string>
 
     <!-- API info -->
-    <string name="info_api_source">Servers sourced from umapyoi.net — verified to work with Cygames &amp; DMM</string>
+    <string name="info_api_source">Servers sourced from umapyoi.net — verified for Cygames &amp; DMM</string>
 </resources>

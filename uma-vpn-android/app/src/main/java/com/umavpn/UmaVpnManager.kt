@@ -7,8 +7,10 @@ import android.content.ServiceConnection
 import android.content.SharedPreferences
 import android.os.IBinder
 import android.util.Log
+import com.umavpn.api.GameConnectivityChecker
 import com.umavpn.api.UmapyoiApiClient
 import com.umavpn.model.ConnectionState
+import com.umavpn.model.GameVersion
 import com.umavpn.model.VpnServer
 import de.blinkt.openvpn.api.IOpenVPNAPIService
 import de.blinkt.openvpn.api.IOpenVPNStatusCallback
@@ -27,17 +29,20 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Singleton that owns the AIDL binding to OpenVPN for Android and drives
- * the full connect/retry/disconnect lifecycle.
+ * Singleton that owns the AIDL binding to OpenVPN for Android and drives the full
+ * connect / retry / game-verify / disconnect lifecycle.
  *
- * Connection algorithm:
- *   1. Fetch the full verified server list from umapyoi.net (sorted by ping).
- *   2. For each server in order:
- *      a. Call startVPN(profile).
- *      b. Wait up to [connectTimeoutMs] for a CONNECTED signal.
- *      c. If an error signal arrives before the timeout, skip to the next server immediately.
- *      d. If the timeout elapses, call disconnect() and skip to the next server.
- *   3. If all servers are exhausted, emit an Error state.
+ * Connection algorithm per attempt:
+ *   1. Fetch the server list for the selected [GameVersion] (GeoIP-filtered).
+ *   2. For each server, in ascending ping order:
+ *      a. startVPN — wait up to [connectTimeoutMs] for CONNECTED.
+ *         CONNECTRETRY / AUTH_FAILED → immediate skip (faulty profile).
+ *         Timeout → force disconnect, skip.
+ *      b. If VPN connected: verify Cygames server reachability (HTTP test).
+ *         404 → "Accessible" — set Connected state and stop.
+ *         403 → IP geo-blocked for this version → disconnect, try next server.
+ *         Inconclusive → stay connected but flag as unverified.
+ *   3. If all servers fail: emit Error state.
  */
 class UmaVpnManager private constructor(private val appContext: Context) {
 
@@ -48,6 +53,8 @@ class UmaVpnManager private constructor(private val appContext: Context) {
 
         private const val PREFS_NAME = "umavpn_prefs"
         private const val PREF_TIMEOUT_SECONDS = "connect_timeout_seconds"
+        private const val PREF_GAME_VERSION = "game_version_ordinal"
+
         const val DEFAULT_TIMEOUT_SECONDS = 8
         const val MIN_TIMEOUT_SECONDS = 3
         const val MAX_TIMEOUT_SECONDS = 30
@@ -64,25 +71,24 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     private val prefs: SharedPreferences =
         appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    /** Timeout per connection attempt in seconds. Persisted across app restarts. */
     var connectTimeoutSeconds: Int
         get() = prefs.getInt(PREF_TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS)
             .coerceIn(MIN_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS)
-        set(value) {
-            prefs.edit().putInt(PREF_TIMEOUT_SECONDS, value.coerceIn(MIN_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS)).apply()
-        }
+        set(value) = prefs.edit()
+            .putInt(PREF_TIMEOUT_SECONDS, value.coerceIn(MIN_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS))
+            .apply()
+
+    var gameVersion: GameVersion
+        get() = GameVersion.fromOrdinal(prefs.getInt(PREF_GAME_VERSION, GameVersion.GLOBAL.ordinal))
+        set(value) = prefs.edit().putInt(PREF_GAME_VERSION, value.ordinal).apply()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val apiClient = UmapyoiApiClient()
+    private val connectivityChecker = GameConnectivityChecker()
 
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
-    /**
-     * Hot signal flow used to bridge the AIDL status callback into the
-     * coroutine-based retry loop. Emits true on CONNECTED, false on any failure.
-     * replay=0 so a new collector never sees stale events from a previous attempt.
-     */
     private val _connectionSignal = MutableSharedFlow<Boolean>(replay = 0, extraBufferCapacity = 16)
 
     private var vpnService: IOpenVPNAPIService? = null
@@ -98,12 +104,12 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             vpnService = IOpenVPNAPIService.Stub.asInterface(binder)
-            Log.d(TAG, "Connected to OpenVPN for Android service")
+            Log.d(TAG, "Bound to OpenVPN for Android")
             runCatching { vpnService?.registerStatusCallback(statusCallback) }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            Log.w(TAG, "Disconnected from OpenVPN for Android service")
+            Log.w(TAG, "OpenVPN service disconnected")
             vpnService = null
         }
     }
@@ -125,12 +131,9 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         }
     }
 
-    fun isOpenVpnInstalled(): Boolean {
-        val visibleToPackageManager = runCatching {
-            appContext.packageManager.getPackageInfo(OPENVPN_PACKAGE, 0)
-        }.isSuccess
-        return visibleToPackageManager || vpnService != null
-    }
+    fun isOpenVpnInstalled(): Boolean =
+        runCatching { appContext.packageManager.getPackageInfo(OPENVPN_PACKAGE, 0) }.isSuccess
+            || vpnService != null
 
     fun isConnected(): Boolean = _state.value is ConnectionState.Connected
 
@@ -146,12 +149,13 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         val current = _state.value
         if (current is ConnectionState.Connecting || current is ConnectionState.Connected) return
 
+        val version = gameVersion
         connectJob?.cancel()
         connectJob = scope.launch {
             _state.value = ConnectionState.FetchingServers
 
             val serversResult = withContext(Dispatchers.IO) {
-                runCatching { apiClient.fetchCygamesServers() }
+                runCatching { apiClient.fetchServers(version) }
             }
 
             if (serversResult.isFailure) {
@@ -162,11 +166,6 @@ class UmaVpnManager private constructor(private val appContext: Context) {
             }
 
             val servers = serversResult.getOrThrow()
-            if (servers.isEmpty()) {
-                _state.value = ConnectionState.Error("No verified servers available right now.")
-                return@launch
-            }
-
             val timeoutMs = connectTimeoutSeconds * 1_000L
 
             for ((index, server) in servers.withIndex()) {
@@ -176,54 +175,81 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                     total = servers.size
                 )
 
-                // Start the connection attempt on a background thread
-                val startOk = withContext(Dispatchers.IO) {
-                    runCatching { vpnService?.startVPN(server.profile) }.isSuccess
-                }
-                if (!startOk) {
-                    Log.w(TAG, "startVPN failed for ${server.remoteHost}, skipping")
-                    continue
+                // Step 1: establish VPN tunnel
+                val vpnConnected = tryConnectVpn(server, timeoutMs)
+                if (!vpnConnected) continue
+
+                // Step 2: verify the game server is reachable through this VPN
+                _state.value = ConnectionState.VerifyingGame(server.remoteHost)
+                val gameResult = withContext(Dispatchers.IO) {
+                    connectivityChecker.check(version.connectivityTestUrl)
                 }
 
-                // Wait for a terminal signal (connected=true or failed=false) with a timeout.
-                // _connectionSignal has replay=0 so we only receive signals emitted *after*
-                // this collect starts — stale events from a previous attempt are never seen.
-                val connected = withTimeoutOrNull(timeoutMs) {
-                    _connectionSignal.first()
-                }
-
-                when (connected) {
-                    true -> {
+                when (gameResult) {
+                    is GameConnectivityChecker.Result.Accessible -> {
                         _state.value = ConnectionState.Connected(
                             serverIp = server.remoteHost,
-                            ping = server.cygames.ping
+                            ping = server.cygames.ping,
+                            gameAccessible = true
                         )
-                        Log.i(TAG, "Connected via ${server.remoteHost} (attempt ${index + 1}/${servers.size})")
+                        Log.i(TAG, "✓ Connected + game verified via ${server.remoteHost}")
                         return@launch
                     }
-                    false -> {
-                        Log.w(TAG, "Server ${server.remoteHost} failed, trying next")
+                    is GameConnectivityChecker.Result.Blocked -> {
+                        Log.w(TAG, "✗ ${server.remoteHost} — game blocked (HTTP 403), trying next")
                         forceDisconnectAndWait()
+                        continue
                     }
-                    null -> {
-                        Log.w(TAG, "Server ${server.remoteHost} timed out after ${connectTimeoutSeconds}s, trying next")
-                        forceDisconnectAndWait()
+                    is GameConnectivityChecker.Result.Inconclusive -> {
+                        // VPN is up but we couldn't confirm game access — stay connected
+                        // but let the user know the check was inconclusive
+                        _state.value = ConnectionState.Connected(
+                            serverIp = server.remoteHost,
+                            ping = server.cygames.ping,
+                            gameAccessible = null
+                        )
+                        Log.w(TAG, "? ${server.remoteHost} — game check inconclusive: ${gameResult.reason}")
+                        return@launch
                     }
                 }
             }
 
-            // All servers tried
             _state.value = ConnectionState.Error(
-                "All ${servers.size} servers failed. Try again in a few minutes."
+                "All ${servers.size} servers tried — none could reach the Umamusume server " +
+                    "for the ${version.label} version. Try again in a few minutes."
             )
         }
     }
 
     /**
-     * Issues a disconnect and gives OpenVPN ~600 ms to clean up before we try the next server.
-     * We intentionally do NOT await the DISCONNECTED callback here — the brief fixed delay is
-     * enough in practice and avoids re-entrant callback complexity.
+     * Issues startVPN for [server] and waits up to [timeoutMs] for the CONNECTED signal.
+     * Returns true if the VPN tunnel came up; false if it failed or timed out.
      */
+    private suspend fun tryConnectVpn(server: VpnServer, timeoutMs: Long): Boolean {
+        val startOk = withContext(Dispatchers.IO) {
+            runCatching { vpnService?.startVPN(server.profile) }.isSuccess
+        }
+        if (!startOk) return false
+
+        val connected = withTimeoutOrNull(timeoutMs) {
+            _connectionSignal.first()
+        }
+
+        return when (connected) {
+            true -> true
+            false -> {
+                Log.w(TAG, "VPN error on ${server.remoteHost}, skipping")
+                forceDisconnectAndWait()
+                false
+            }
+            null -> {
+                Log.w(TAG, "VPN timeout on ${server.remoteHost} after ${connectTimeoutSeconds}s")
+                forceDisconnectAndWait()
+                false
+            }
+        }
+    }
+
     private suspend fun forceDisconnectAndWait() {
         withContext(Dispatchers.IO) { runCatching { vpnService?.disconnect() } }
         delay(600)
@@ -241,30 +267,20 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     fun toggle() {
         when (_state.value) {
             is ConnectionState.Connected,
-            is ConnectionState.Connecting -> disconnect()
+            is ConnectionState.Connecting,
+            is ConnectionState.VerifyingGame -> disconnect()
             else -> connect()
         }
     }
 
     private fun handleVpnStatus(state: String?) {
         when (state) {
-            "CONNECTED" -> {
-                // Signal the connect() retry loop — it will set the Connected state
-                // since it has the full VpnServer object (including the ping value).
-                scope.launch { _connectionSignal.emit(true) }
-            }
-
-            "CONNECTRETRY", "AUTH_FAILED" -> {
-                // Faulty profile or unreachable host — signal immediate skip
-                scope.launch { _connectionSignal.emit(false) }
-            }
-
+            "CONNECTED" -> scope.launch { _connectionSignal.emit(true) }
+            "CONNECTRETRY", "AUTH_FAILED" -> scope.launch { _connectionSignal.emit(false) }
             "DISCONNECTED", "EXITING" -> {
-                // Only update the public state if we're NOT inside a retry loop.
-                // During active connection attempts the connect() coroutine owns all
-                // state transitions; this branch only fires for user-initiated disconnects.
                 val current = _state.value
                 if (current !is ConnectionState.Connecting &&
+                    current !is ConnectionState.VerifyingGame &&
                     current !is ConnectionState.FetchingServers &&
                     current !is ConnectionState.Disconnecting
                 ) {

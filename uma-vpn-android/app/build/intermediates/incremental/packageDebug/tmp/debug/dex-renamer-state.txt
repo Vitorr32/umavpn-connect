@@ -1,0 +1,22 @@
+#Mon Jun 08 06:00:27 UTC 2026
+base.0=/workspace/uma-vpn-android/app/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
+base.1=/workspace/uma-vpn-android/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
+base.2=/workspace/uma-vpn-android/app/build/intermediates/dex/debug/mergeProjectDexDebug/11/classes.dex
+base.3=/workspace/uma-vpn-android/app/build/intermediates/dex/debug/mergeProjectDexDebug/14/classes.dex
+base.4=/workspace/uma-vpn-android/app/build/intermediates/dex/debug/mergeProjectDexDebug/2/classes.dex
+base.5=/workspace/uma-vpn-android/app/build/intermediates/dex/debug/mergeProjectDexDebug/8/classes.dex
+base.6=/workspace/uma-vpn-android/app/build/intermediates/dex/debug/mergeExtDexDebug/classes2.dex
+path.0=classes.dex
+path.1=0/classes.dex
+path.2=11/classes.dex
+path.3=14/classes.dex
+path.4=2/classes.dex
+path.5=8/classes.dex
+path.6=classes2.dex
+renamed.0=classes.dex
+renamed.1=classes2.dex
+renamed.2=classes3.dex
+renamed.3=classes4.dex
+renamed.4=classes5.dex
+renamed.5=classes6.dex
+renamed.6=classes7.dex

@@ -1,0 +1,217 @@
+package com.umavpn
+
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.view.View
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.snackbar.Snackbar
+import com.umavpn.databinding.ActivityMainBinding
+import com.umavpn.model.ConnectionState
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+
+class MainActivity : AppCompatActivity() {
+
+    companion object {
+        const val EXTRA_REQUEST_PERMISSION = "extra_request_permission"
+        const val EXTRA_REQUEST_VPN_PERMISSION = "extra_request_vpn_permission"
+    }
+
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var manager: UmaVpnManager
+
+    private val apiPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result: ActivityResult ->
+        if (result.resultCode == RESULT_OK) {
+            handleToggle()
+        } else {
+            showSnackbar("Permission denied. Cannot control OpenVPN for Android.")
+        }
+    }
+
+    private val vpnPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result: ActivityResult ->
+        if (result.resultCode == RESULT_OK) {
+            manager.connect()
+        } else {
+            showSnackbar("VPN permission denied.")
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        manager = UmaVpnManager.getInstance(applicationContext)
+
+        setupUI()
+        observeState()
+        handleIncomingIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.let { handleIncomingIntent(it) }
+    }
+
+    private fun handleIncomingIntent(intent: Intent) {
+        when {
+            intent.getBooleanExtra(EXTRA_REQUEST_PERMISSION, false) -> requestApiPermission()
+            intent.getBooleanExtra(EXTRA_REQUEST_VPN_PERMISSION, false) -> requestVpnPermission()
+        }
+    }
+
+    private fun setupUI() {
+        binding.btnToggle.setOnClickListener {
+            when {
+                !manager.isOpenVpnInstalled() -> promptInstallOpenVpn()
+                else -> handleToggle()
+            }
+        }
+
+        binding.btnInstallOpenVpn.setOnClickListener { promptInstallOpenVpn() }
+        binding.btnOpenVpnApp.setOnClickListener { openOpenVpnApp() }
+    }
+
+    private fun handleToggle() {
+        val apiPermIntent = manager.getApiPermissionIntent()
+        if (apiPermIntent != null) {
+            requestApiPermission()
+            return
+        }
+
+        val vpnPermIntent = manager.getVpnServicePermissionIntent()
+        if (vpnPermIntent != null) {
+            requestVpnPermission()
+            return
+        }
+
+        manager.toggle()
+    }
+
+    private fun requestApiPermission() {
+        val intent = manager.getApiPermissionIntent() ?: return
+        apiPermissionLauncher.launch(intent)
+    }
+
+    private fun requestVpnPermission() {
+        val intent = manager.getVpnServicePermissionIntent() ?: run {
+            manager.connect()
+            return
+        }
+        vpnPermissionLauncher.launch(intent)
+    }
+
+    private fun observeState() {
+        manager.state.onEach { state ->
+            updateUI(state)
+        }.launchIn(lifecycleScope)
+    }
+
+    private fun updateUI(state: ConnectionState) {
+        val openVpnInstalled = manager.isOpenVpnInstalled()
+
+        binding.cardInstallBanner.visibility =
+            if (!openVpnInstalled) View.VISIBLE else View.GONE
+
+        when (state) {
+            is ConnectionState.Idle -> {
+                binding.statusIndicator.setImageResource(R.drawable.ic_status_disconnected)
+                binding.tvStatus.text = getString(R.string.status_disconnected)
+                binding.tvServer.visibility = View.GONE
+                binding.tvPing.visibility = View.GONE
+                binding.progressBar.visibility = View.GONE
+                binding.btnToggle.text = getString(R.string.btn_connect)
+                binding.btnToggle.isEnabled = openVpnInstalled
+            }
+
+            is ConnectionState.FetchingServers -> {
+                binding.statusIndicator.setImageResource(R.drawable.ic_status_connecting)
+                binding.tvStatus.text = getString(R.string.status_fetching)
+                binding.tvServer.visibility = View.GONE
+                binding.tvPing.visibility = View.GONE
+                binding.progressBar.visibility = View.VISIBLE
+                binding.btnToggle.text = getString(R.string.btn_cancel)
+                binding.btnToggle.isEnabled = true
+            }
+
+            is ConnectionState.Connecting -> {
+                binding.statusIndicator.setImageResource(R.drawable.ic_status_connecting)
+                binding.tvStatus.text = getString(R.string.status_connecting)
+                binding.tvServer.text = getString(R.string.label_server, state.serverIp)
+                binding.tvServer.visibility = View.VISIBLE
+                binding.tvPing.visibility = View.GONE
+                binding.progressBar.visibility = View.VISIBLE
+                binding.btnToggle.text = getString(R.string.btn_cancel)
+                binding.btnToggle.isEnabled = true
+            }
+
+            is ConnectionState.Connected -> {
+                binding.statusIndicator.setImageResource(R.drawable.ic_status_connected)
+                binding.tvStatus.text = getString(R.string.status_connected)
+                binding.tvServer.text = getString(R.string.label_server, state.serverIp)
+                binding.tvServer.visibility = View.VISIBLE
+                binding.tvPing.text = getString(
+                    R.string.label_ping,
+                    String.format("%.0f", state.ping)
+                )
+                binding.tvPing.visibility = View.VISIBLE
+                binding.progressBar.visibility = View.GONE
+                binding.btnToggle.text = getString(R.string.btn_disconnect)
+                binding.btnToggle.isEnabled = true
+            }
+
+            is ConnectionState.Error -> {
+                binding.statusIndicator.setImageResource(R.drawable.ic_status_error)
+                binding.tvStatus.text = getString(R.string.status_error)
+                binding.tvServer.text = state.message
+                binding.tvServer.visibility = View.VISIBLE
+                binding.tvPing.visibility = View.GONE
+                binding.progressBar.visibility = View.GONE
+                binding.btnToggle.text = getString(R.string.btn_retry)
+                binding.btnToggle.isEnabled = openVpnInstalled
+            }
+
+            is ConnectionState.Disconnecting -> {
+                binding.statusIndicator.setImageResource(R.drawable.ic_status_connecting)
+                binding.tvStatus.text = getString(R.string.status_disconnecting)
+                binding.tvServer.visibility = View.GONE
+                binding.tvPing.visibility = View.GONE
+                binding.progressBar.visibility = View.VISIBLE
+                binding.btnToggle.isEnabled = false
+            }
+        }
+    }
+
+    private fun promptInstallOpenVpn() {
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=de.blinkt.openvpn"))
+            )
+        } catch (e: Exception) {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=de.blinkt.openvpn")
+                )
+            )
+        }
+    }
+
+    private fun openOpenVpnApp() {
+        packageManager.getLaunchIntentForPackage("de.blinkt.openvpn")?.let {
+            startActivity(it)
+        } ?: showSnackbar("OpenVPN for Android is not installed.")
+    }
+
+    private fun showSnackbar(message: String) {
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+    }
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Purple shield -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,18 L24,30 L24,54 C24,72 36.4,88.6 54,93 C71.6,88.6 84,72 84,54 L84,30 Z" />
+    <!-- Lightning bolt inside shield -->
+    <path
+        android:fillColor="#6B4FA0"
+        android:pathData="M50,38 L56,38 L56,58 L50,58 Z M50,62 L56,62 L56,70 L50,70 Z" />
+</vector>

@@ -6,7 +6,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
-import com.umavpn.api.UmapyoiApiClient
+import com.umavpn.api.UmaVpnApiClient
+import com.umavpn.model.GameMode
 import com.umavpn.model.ConnectionState
 import com.umavpn.model.VpnServer
 import de.blinkt.openvpn.api.IOpenVPNAPIService
@@ -42,7 +43,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val apiClient = UmapyoiApiClient()
+    private val apiClient = UmaVpnApiClient()
 
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
@@ -128,7 +129,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
             _state.value = ConnectionState.FetchingServers
 
             val serverResult = withContext(Dispatchers.IO) {
-                runCatching { apiClient.fetchBestServer() }
+                runCatching { apiClient.fetchBestServer(GameMode.GLOBAL) }
             }
 
             if (serverResult.isFailure) {
@@ -187,7 +188,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         when (state) {
             "CONNECTED" -> _state.value = ConnectionState.Connected(
                 serverIp = server.remoteHost,
-                ping = server.cygames.ping
+                ping = server.ping
             )
 
             "DISCONNECTED", "EXITING" -> {

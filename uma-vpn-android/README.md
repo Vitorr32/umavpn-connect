@@ -5,7 +5,7 @@ A lightweight Android app that automates connecting to the best available VPN se
 ## How it works
 
 1. When you tap the **Quick Settings tile** (or the in-app button), the app:
-   - Fetches the current list of VPN servers from [umapyoi.net](https://umapyoi.net/api/v1/vpn/cygames), which automatically verifies each server works with Cygames and sorts them by ping.
+   - Fetches the current list of VPN servers from [api.umavpn.top](https://api.umavpn.top/api/server?sites=umag), which automatically verifies each server works with Umamusume Global and sorts them by ping.
    - Picks the fastest available server (lowest ping to Cygames).
    - Passes the full OpenVPN profile (embedded in the API response) directly to **OpenVPN for Android** via its documented IPC API.
    - Reports success or failure via the tile subtitle and the in-app status screen.
@@ -81,7 +81,7 @@ com.umavpn/
 ├── MainActivity.kt           — Status screen with toggle button
 ├── VpnTileService.kt         — Quick Settings TileService
 ├── api/
-│   └── UmapyoiApiClient.kt   — HTTP client for umapyoi.net/api/v1/vpn/cygames
+│   └── UmaVpnApiClient.kt    — HTTP client for api.umavpn.top (Global: sites=umag, no JP filter)
 └── model/
     ├── VpnServer.kt           — API response model
     └── ConnectionState.kt     — Sealed class representing VPN state
@@ -95,7 +95,7 @@ de.blinkt.openvpn.api/        — Copied AIDL + Parcelable from ics-openvpn's ex
 
 ## Server source
 
-Servers are pulled from **[umapyoi.net](https://umapyoi.net)**, a public API that:
+Servers are pulled from **[umavpn.top](https://www.umavpn.top)** via `api.umavpn.top`, a public API that:
 - Draws servers from [VPN Gate](https://www.vpngate.net/en/) (a free, volunteer-run VPN relay service operated by University of Tsukuba).
 - Automatically tests each one against `https://api.games.umamusume.jp/` (Cygames) and `https://bitcoin.dmm.com/` (DMM login).
 - Sorts verified servers by ping and refreshes roughly every hour.
@@ -113,6 +113,6 @@ The API is used read-only — no data is sent to it.
 
 ## Credits
 
-- VPN server data: [umapyoi.net](https://umapyoi.net) by the Umamusume fan community
+- VPN server data: [umavpn.top](https://www.umavpn.top) (Nasu VPN Checker)
 - OpenVPN client: [ics-openvpn](https://github.com/schwabe/ics-openvpn) by Arne Schwabe (Apache 2.0)
 - VPN relay servers: [VPN Gate](https://www.vpngate.net/) — University of Tsukuba

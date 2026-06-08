@@ -39,5 +39,5 @@
     <string name="hint_tile">Tip: Add the UmaVPN tile to your Quick Settings panel for one-tap access without opening this app.</string>
 
     <!-- API info -->
-    <string name="info_api_source">Servers sourced from umapyoi.net — verified to work with Cygames &amp; DMM</string>
+    <string name="info_api_source">Servers sourced from umavpn.top — verified to work with Umamusume Global</string>
 </resources>

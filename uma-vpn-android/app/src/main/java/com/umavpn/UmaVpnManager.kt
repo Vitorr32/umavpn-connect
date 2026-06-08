@@ -187,7 +187,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         when (state) {
             "CONNECTED" -> _state.value = ConnectionState.Connected(
                 serverIp = server.remoteHost,
-                ping = server.cygames.ping
+                ping = server.ping
             )
 
             "DISCONNECTED", "EXITING" -> {

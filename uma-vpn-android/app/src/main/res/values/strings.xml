@@ -31,9 +31,9 @@
 
     <!-- Install banner -->
     <string name="banner_install_title">OpenVPN for Android required</string>
-    <string name="banner_install_body">This app uses OpenVPN for Android to establish the VPN connection. Please install it first.</string>
-    <string name="btn_install_openvpn">Install OpenVPN for Android</string>
-    <string name="btn_open_openvpn">Open OpenVPN</string>
+    <string name="banner_install_body">This app needs "OpenVPN for Android" by Arne Schwabe (package: de.blinkt.openvpn). Note: this is different from "OpenVPN Connect" by OpenVPN Inc.</string>
+    <string name="btn_install_openvpn">Install from Play Store</string>
+    <string name="btn_open_openvpn">Open it</string>
 
     <!-- How-to note -->
     <string name="hint_tile">Tip: Add the UmaVPN tile to your Quick Settings panel for one-tap access without opening this app.</string>

@@ -11,6 +11,18 @@
     -->
     <uses-permission android:name="de.blinkt.openvpn.permission.OPENVPN_API" />
 
+    <!--
+        Required on Android 11+ (API 30) for package visibility.
+        Without this, getPackageInfo() and bindService() targeting
+        de.blinkt.openvpn both silently fail even when the app is installed.
+    -->
+    <queries>
+        <package android:name="de.blinkt.openvpn" />
+        <intent>
+            <action android:name="de.blinkt.openvpn.api.IOpenVPNAPIService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".UmaVpnApplication"
         android:allowBackup="false"

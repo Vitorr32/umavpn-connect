@@ -94,12 +94,18 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     }
 
     fun isOpenVpnInstalled(): Boolean {
-        return try {
+        // Primary check: package manager lookup (works once <queries> is declared in the manifest)
+        val visibleToPackageManager = try {
             appContext.packageManager.getPackageInfo(OPENVPN_PACKAGE, 0)
             true
         } catch (e: Exception) {
             false
         }
+        if (visibleToPackageManager) return true
+
+        // Fallback: if the AIDL service bound successfully, the app is definitely installed
+        // (handles edge cases where the package manager check still fails)
+        return vpnService != null
     }
 
     fun isConnected(): Boolean = _state.value is ConnectionState.Connected

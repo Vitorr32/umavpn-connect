@@ -1,0 +1,23 @@
+# Build outputs
+/app/build/
+/build/
+
+# Gradle
+.gradle/
+local.properties
+gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+
+# Signing — never commit keystores or credential files
+keystore.jks
+keystore.properties
+*.keystore
+*.p12
+
+# OS
+.DS_Store
+Thumbs.db

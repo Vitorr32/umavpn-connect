@@ -1,8 +1,9 @@
 package com.umavpn.api
 
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.umavpn.model.GameMode
+import com.umavpn.model.GameVersion
 import com.umavpn.model.VpnServer
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -20,22 +21,18 @@ class UmaVpnApiClient {
     private val gson = Gson()
 
     /**
-     * Fetches VPN servers verified for the given [mode] from api.umavpn.top.
-     * Results are ordered by lowest ping ([orderBy]=duration).
+     * Fetches VPN servers verified for [gameVersion] from api.umavpn.top.
+     * Global uses sites=umag with no country filter; Japanese uses sites=uma + country=JP.
      */
     @Throws(IOException::class)
-    fun fetchServers(
-        mode: GameMode = GameMode.GLOBAL,
-        take: Int = 10,
-        orderBy: String = "duration",
-    ): List<ServerEntry> {
+    fun fetchServers(gameVersion: GameVersion, take: Int = 30): List<VpnServer> {
         val urlBuilder = "$BASE_URL/api/server".toHttpUrl().newBuilder()
-            .addQueryParameter("sites", mode.site)
+            .addQueryParameter("sites", gameVersion.site)
             .addQueryParameter("take", take.toString())
-            .addQueryParameter("orderBy", orderBy)
+            .addQueryParameter("orderBy", "duration")
 
-        // Global (umag) servers are outside Japan — never apply country=JP here.
-        mode.countryCode?.let { urlBuilder.addQueryParameter("country", it) }
+        // Global servers are outside Japan — never apply country=JP for umag.
+        gameVersion.countryCode?.let { urlBuilder.addQueryParameter("country", it) }
 
         val request = Request.Builder()
             .url(urlBuilder.build())
@@ -48,7 +45,7 @@ class UmaVpnApiClient {
                 throw IOException("API request failed: HTTP ${response.code}")
             }
             val body = response.body?.string()
-                ?: throw IOException("Empty response body from API")
+                ?: throw IOException("Empty response from api.umavpn.top")
 
             val type = object : TypeToken<ApiResponse<List<ServerEntry>>>() {}.type
             val parsed: ApiResponse<List<ServerEntry>> = gson.fromJson(body, type)
@@ -56,13 +53,27 @@ class UmaVpnApiClient {
             if (!parsed.success) {
                 throw IOException("API returned success=false")
             }
-            return parsed.data.orEmpty()
+
+            val entries = parsed.data.orEmpty()
+            Log.d(TAG, "Fetched ${entries.size} servers for ${gameVersion.label}")
+
+            if (entries.isEmpty()) {
+                throw IOException(
+                    "No servers available for the ${gameVersion.label} version right now. " +
+                        "Try again in a few minutes."
+                )
+            }
+
+            return entries.map { entry ->
+                VpnServer(
+                    ip = entry.ip,
+                    ping = entry.duration.toDouble(),
+                    country = entry.country,
+                )
+            }
         }
     }
 
-    /**
-     * Downloads the OpenVPN profile for [ip].
-     */
     @Throws(IOException::class)
     fun fetchServerConfig(ip: String): String {
         val request = Request.Builder()
@@ -80,24 +91,6 @@ class UmaVpnApiClient {
         }
     }
 
-    /**
-     * Returns the best available server for [mode] (lowest ping) with its OpenVPN profile.
-     */
-    @Throws(IOException::class)
-    fun fetchBestServer(mode: GameMode = GameMode.GLOBAL): VpnServer {
-        val servers = fetchServers(mode)
-        val best = servers.firstOrNull()
-            ?: throw IOException("No verified VPN servers available right now. Please try again later.")
-
-        val profile = fetchServerConfig(best.ip)
-        return VpnServer(
-            profile = profile,
-            ip = best.ip,
-            ping = best.duration.toDouble(),
-            country = best.country,
-        )
-    }
-
     data class ApiResponse<T>(
         val success: Boolean,
         val data: T?,
@@ -112,7 +105,8 @@ class UmaVpnApiClient {
     )
 
     companion object {
+        private const val TAG = "UmaVpnApiClient"
         private const val BASE_URL = "https://api.umavpn.top"
-        private const val USER_AGENT = "UmaVPN-Android/1.0"
+        private const val USER_AGENT = "UmaVPN-Android/1.4"
     }
 }

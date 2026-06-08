@@ -1,10 +1,10 @@
 package com.umavpn.model
 
 data class VpnServer(
-    val profile: String,
     val ip: String,
     val ping: Double,
     val country: String = "",
+    val profile: String = "",
 ) {
     val remoteHost: String
         get() = ip.ifEmpty {

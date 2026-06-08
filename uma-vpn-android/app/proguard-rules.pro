@@ -1,0 +1,3 @@
+-keep class com.umavpn.model.** { *; }
+-keep class de.blinkt.openvpn.api.** { *; }
+-keepattributes *Annotation*

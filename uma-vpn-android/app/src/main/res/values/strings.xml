@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UmaVPN</string>
+
+    <!-- Tile -->
+    <string name="tile_label">UmaVPN</string>
+    <string name="tile_subtitle_idle">Tap to connect</string>
+    <string name="tile_subtitle_fetching">Finding best server…</string>
+    <string name="tile_subtitle_connecting">Connecting to %1$s…</string>
+    <string name="tile_subtitle_connected">%1$s · %2$s ms</string>
+    <string name="tile_subtitle_error">Connection failed</string>
+    <string name="tile_subtitle_disconnecting">Disconnecting…</string>
+
+    <!-- Status labels -->
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_fetching">Finding best server…</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_error">Connection error</string>
+    <string name="status_disconnecting">Disconnecting…</string>
+
+    <!-- Detail labels -->
+    <string name="label_server">Server: %1$s</string>
+    <string name="label_ping">Ping: %1$s ms</string>
+
+    <!-- Buttons -->
+    <string name="btn_connect">Connect to Umamusume</string>
+    <string name="btn_disconnect">Disconnect</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_retry">Retry</string>
+
+    <!-- Install banner -->
+    <string name="banner_install_title">OpenVPN for Android required</string>
+    <string name="banner_install_body">This app uses OpenVPN for Android to establish the VPN connection. Please install it first.</string>
+    <string name="btn_install_openvpn">Install OpenVPN for Android</string>
+    <string name="btn_open_openvpn">Open OpenVPN</string>
+
+    <!-- How-to note -->
+    <string name="hint_tile">Tip: Add the UmaVPN tile to your Quick Settings panel for one-tap access without opening this app.</string>
+
+    <!-- API info -->
+    <string name="info_api_source">Servers sourced from umapyoi.net — verified to work with Cygames &amp; DMM</string>
+</resources>

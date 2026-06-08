@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#6B4FA0</color>
+    <color name="primary_dark">#4A3370</color>
+    <color name="primary_light">#9B7FD0</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="surface">#1E1B2E</color>
+    <color name="surface_variant">#2D2A40</color>
+    <color name="on_surface">#FFFFFF</color>
+    <color name="on_surface_variant">#B0ADCA</color>
+    <color name="background">#13101F</color>
+
+    <color name="connected_green">#4CAF50</color>
+    <color name="connecting_amber">#FFC107</color>
+    <color name="error_red">#F44336</color>
+    <color name="disconnected_grey">#9E9E9E</color>
+
+    <color name="card_background">#1E1B2E</color>
+    <color name="divider">#2D2A40</color>
+</resources>

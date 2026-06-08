@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- HTTPS only for the VPN server list -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">umapyoi.net</domain>
+        <domain includeSubdomains="true">api.umavpn.top</domain>
         <domain includeSubdomains="true">api-umamusume.cygames.jp</domain>
-    </domain-config>
-    <!-- ip-api.com free batch endpoint is HTTP only; the data (IP→country) is not sensitive -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">ip-api.com</domain>
     </domain-config>
 </network-security-config>

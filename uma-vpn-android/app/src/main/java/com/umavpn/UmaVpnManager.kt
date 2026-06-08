@@ -8,7 +8,7 @@ import android.content.SharedPreferences
 import android.os.IBinder
 import android.util.Log
 import com.umavpn.api.GameConnectivityChecker
-import com.umavpn.api.UmapyoiApiClient
+import com.umavpn.api.UmaVpnApiClient
 import com.umavpn.model.ConnectionState
 import com.umavpn.model.GameVersion
 import com.umavpn.model.VpnServer
@@ -33,7 +33,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * connect / retry / game-verify / disconnect lifecycle.
  *
  * Connection algorithm per attempt:
- *   1. Fetch the server list for the selected [GameVersion] (GeoIP-filtered).
+ *   1. Fetch the server list for the selected [GameVersion] from api.umavpn.top.
  *   2. For each server, in ascending ping order:
  *      a. startVPN — wait up to [connectTimeoutMs] for CONNECTED.
  *         CONNECTRETRY / AUTH_FAILED → immediate skip (faulty profile).
@@ -83,7 +83,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         set(value) = prefs.edit().putInt(PREF_GAME_VERSION, value.ordinal).apply()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val apiClient = UmapyoiApiClient()
+    private val apiClient = UmaVpnApiClient()
     private val connectivityChecker = GameConnectivityChecker()
 
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
@@ -175,12 +175,21 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                     total = servers.size
                 )
 
+                val profileResult = withContext(Dispatchers.IO) {
+                    runCatching { apiClient.fetchServerConfig(server.ip) }
+                }
+                if (profileResult.isFailure) {
+                    Log.w(TAG, "Could not fetch profile for ${server.ip}, skipping")
+                    continue
+                }
+                val serverWithProfile = server.copy(profile = profileResult.getOrThrow())
+
                 // Step 1: establish VPN tunnel
-                val vpnConnected = tryConnectVpn(server, timeoutMs)
+                val vpnConnected = tryConnectVpn(serverWithProfile, timeoutMs)
                 if (!vpnConnected) continue
 
                 // Step 2: verify the game server is reachable through this VPN
-                _state.value = ConnectionState.VerifyingGame(server.remoteHost)
+                _state.value = ConnectionState.VerifyingGame(serverWithProfile.remoteHost)
                 val gameResult = withContext(Dispatchers.IO) {
                     connectivityChecker.check(version.connectivityTestUrl)
                 }
@@ -188,15 +197,15 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                 when (gameResult) {
                     is GameConnectivityChecker.Result.Accessible -> {
                         _state.value = ConnectionState.Connected(
-                            serverIp = server.remoteHost,
-                            ping = server.cygames.ping,
+                            serverIp = serverWithProfile.remoteHost,
+                            ping = serverWithProfile.ping,
                             gameAccessible = true
                         )
-                        Log.i(TAG, "✓ Connected + game verified via ${server.remoteHost}")
+                        Log.i(TAG, "✓ Connected + game verified via ${serverWithProfile.remoteHost}")
                         return@launch
                     }
                     is GameConnectivityChecker.Result.Blocked -> {
-                        Log.w(TAG, "✗ ${server.remoteHost} — game blocked (HTTP 403), trying next")
+                        Log.w(TAG, "✗ ${serverWithProfile.remoteHost} — game blocked (HTTP 403), trying next")
                         forceDisconnectAndWait()
                         continue
                     }
@@ -204,11 +213,11 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                         // VPN is up but we couldn't confirm game access — stay connected
                         // but let the user know the check was inconclusive
                         _state.value = ConnectionState.Connected(
-                            serverIp = server.remoteHost,
-                            ping = server.cygames.ping,
+                            serverIp = serverWithProfile.remoteHost,
+                            ping = serverWithProfile.ping,
                             gameAccessible = null
                         )
-                        Log.w(TAG, "? ${server.remoteHost} — game check inconclusive: ${gameResult.reason}")
+                        Log.w(TAG, "? ${serverWithProfile.remoteHost} — game check inconclusive: ${gameResult.reason}")
                         return@launch
                     }
                 }

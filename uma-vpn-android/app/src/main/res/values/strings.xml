@@ -5,16 +5,16 @@
     <!-- Tile -->
     <string name="tile_label">UmaVPN</string>
     <string name="tile_subtitle_idle">Tap to connect</string>
-    <string name="tile_subtitle_fetching">Finding best server…</string>
-    <string name="tile_subtitle_connecting">Connecting to %1$s…</string>
+    <string name="tile_subtitle_fetching">Finding servers…</string>
+    <string name="tile_subtitle_connecting">Trying %1$d/%2$d: %3$s</string>
     <string name="tile_subtitle_connected">%1$s · %2$s ms</string>
-    <string name="tile_subtitle_error">Connection failed</string>
+    <string name="tile_subtitle_error">All servers failed</string>
     <string name="tile_subtitle_disconnecting">Disconnecting…</string>
 
     <!-- Status labels -->
     <string name="status_disconnected">Disconnected</string>
-    <string name="status_fetching">Finding best server…</string>
-    <string name="status_connecting">Connecting…</string>
+    <string name="status_fetching">Finding servers…</string>
+    <string name="status_connecting">Trying server %1$d of %2$d</string>
     <string name="status_connected">Connected</string>
     <string name="status_error">Connection error</string>
     <string name="status_disconnecting">Disconnecting…</string>
@@ -22,6 +22,11 @@
     <!-- Detail labels -->
     <string name="label_server">Server: %1$s</string>
     <string name="label_ping">Ping: %1$s ms</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="label_timeout">Connection timeout per server: %1$d s</string>
+    <string name="hint_timeout">3 – 30 seconds. If a server doesn\'t respond within this time, the next one is tried automatically.</string>
 
     <!-- Buttons -->
     <string name="btn_connect">Connect to Umamusume</string>

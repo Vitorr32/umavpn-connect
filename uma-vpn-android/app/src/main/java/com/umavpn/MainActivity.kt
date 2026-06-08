@@ -78,6 +78,29 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnInstallOpenVpn.setOnClickListener { promptInstallOpenVpn() }
         binding.btnOpenVpnApp.setOnClickListener { openOpenVpnApp() }
+
+        setupTimeoutSeekBar()
+    }
+
+    private fun setupTimeoutSeekBar() {
+        val range = UmaVpnManager.MAX_TIMEOUT_SECONDS - UmaVpnManager.MIN_TIMEOUT_SECONDS
+        binding.seekTimeout.max = range
+        binding.seekTimeout.progress = manager.connectTimeoutSeconds - UmaVpnManager.MIN_TIMEOUT_SECONDS
+        updateTimeoutLabel(manager.connectTimeoutSeconds)
+
+        binding.seekTimeout.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                val seconds = progress + UmaVpnManager.MIN_TIMEOUT_SECONDS
+                updateTimeoutLabel(seconds)
+                if (fromUser) manager.connectTimeoutSeconds = seconds
+            }
+            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+        })
+    }
+
+    private fun updateTimeoutLabel(seconds: Int) {
+        binding.tvTimeoutLabel.text = getString(R.string.label_timeout, seconds)
     }
 
     private fun handleToggle() {
@@ -144,7 +167,11 @@ class MainActivity : AppCompatActivity() {
 
             is ConnectionState.Connecting -> {
                 binding.statusIndicator.setImageResource(R.drawable.ic_status_connecting)
-                binding.tvStatus.text = getString(R.string.status_connecting)
+                binding.tvStatus.text = if (state.total > 0) {
+                    getString(R.string.status_connecting, state.attempt, state.total)
+                } else {
+                    getString(R.string.status_connecting, 1, 1)
+                }
                 binding.tvServer.text = getString(R.string.label_server, state.serverIp)
                 binding.tvServer.visibility = View.VISIBLE
                 binding.tvPing.visibility = View.GONE

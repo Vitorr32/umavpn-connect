@@ -117,7 +117,11 @@ class VpnTileService : TileService() {
                 tile.state = Tile.STATE_ACTIVE
                 tile.label = getString(R.string.tile_label)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = getString(R.string.tile_subtitle_connecting, state.serverIp)
+                    tile.subtitle = if (state.total > 0) {
+                        getString(R.string.tile_subtitle_connecting, state.attempt, state.total, state.serverIp)
+                    } else {
+                        state.serverIp
+                    }
                 }
             }
 

@@ -1,6 +1,12 @@
 package com.umavpn.model
 
-enum class GameVersion(val label: String, val excludeCountryCode: String?, val onlyCountryCode: String?) {
+enum class GameVersion(
+    val label: String,
+    /** Site filter on api.umavpn.top (matches umavpn.top checker). */
+    val siteCode: String,
+    val excludeCountryCode: String?,
+    val onlyCountryCode: String?,
+) {
     /**
      * Umamusume: Pretty Derby — Global release (Cygames worldwide).
      * The global client is blocked by Cygames when connecting from Japanese IPs,
@@ -8,8 +14,9 @@ enum class GameVersion(val label: String, val excludeCountryCode: String?, val o
      */
     GLOBAL(
         label = "Global",
+        siteCode = "umag",
         excludeCountryCode = "JP",
-        onlyCountryCode = null
+        onlyCountryCode = null,
     ),
 
     /**
@@ -18,8 +25,9 @@ enum class GameVersion(val label: String, val excludeCountryCode: String?, val o
      */
     JAPANESE(
         label = "Japanese",
+        siteCode = "uma",
         excludeCountryCode = null,
-        onlyCountryCode = "JP"
+        onlyCountryCode = "JP",
     );
 
     /** The Cygames API endpoint used to verify a server can actually reach the game. */

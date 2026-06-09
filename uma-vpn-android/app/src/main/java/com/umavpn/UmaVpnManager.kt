@@ -8,7 +8,7 @@ import android.content.SharedPreferences
 import android.os.IBinder
 import android.util.Log
 import com.umavpn.api.GameConnectivityChecker
-import com.umavpn.api.UmapyoiApiClient
+import com.umavpn.api.VpnApiClient
 import com.umavpn.model.ConnectionState
 import com.umavpn.model.GameVersion
 import com.umavpn.model.VpnServer
@@ -33,7 +33,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * connect / retry / game-verify / disconnect lifecycle.
  *
  * Connection algorithm per attempt:
- *   1. Fetch the server list for the selected [GameVersion] (GeoIP-filtered).
+ *   1. Fetch the server list for the selected [GameVersion].
  *   2. For each server, in ascending ping order:
  *      a. startVPN — wait up to [connectTimeoutMs] for CONNECTED.
  *         CONNECTRETRY / AUTH_FAILED → immediate skip (faulty profile).
@@ -83,7 +83,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         set(value) = prefs.edit().putInt(PREF_GAME_VERSION, value.ordinal).apply()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val apiClient = UmapyoiApiClient()
+    private val apiClient = VpnApiClient()
     private val connectivityChecker = GameConnectivityChecker()
 
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
@@ -189,7 +189,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                     is GameConnectivityChecker.Result.Accessible -> {
                         _state.value = ConnectionState.Connected(
                             serverIp = server.remoteHost,
-                            ping = server.cygames.ping,
+                            ping = server.pingMs,
                             gameAccessible = true
                         )
                         Log.i(TAG, "✓ Connected + game verified via ${server.remoteHost}")
@@ -205,7 +205,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                         // but let the user know the check was inconclusive
                         _state.value = ConnectionState.Connected(
                             serverIp = server.remoteHost,
-                            ping = server.cygames.ping,
+                            ping = server.pingMs,
                             gameAccessible = null
                         )
                         Log.w(TAG, "? ${server.remoteHost} — game check inconclusive: ${gameResult.reason}")

@@ -18,18 +18,20 @@ android {
         applicationId = "com.umavpn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.5"
+        versionCode = 6
+        versionName = "1.6"
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = keystorePropertiesFile.resolveSibling(
-                keystoreProperties.getProperty("storeFile", "keystore.jks")
-            )
-            storePassword = keystoreProperties.getProperty("storePassword")
-            keyAlias = keystoreProperties.getProperty("keyAlias")
-            keyPassword = keystoreProperties.getProperty("keyPassword")
+    if (keystorePropertiesFile.exists()) {
+        signingConfigs {
+            create("release") {
+                storeFile = keystorePropertiesFile.resolveSibling(
+                    keystoreProperties.getProperty("storeFile", "keystore.jks")
+                )
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
         }
     }
 
@@ -41,7 +43,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

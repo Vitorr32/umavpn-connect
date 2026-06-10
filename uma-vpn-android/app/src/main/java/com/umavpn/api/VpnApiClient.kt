@@ -70,7 +70,7 @@ class VpnApiClient {
                 Log.w(TAG, "Skipping ${entry.ip}: ${error.message}")
                 null
             }
-        }.sortedBy { it.pingMs }
+        }.let { sortServers(it, gameVersion) }
 
         if (servers.isEmpty()) {
             throw IOException("Failed to download OpenVPN profiles for any server.")
@@ -120,6 +120,17 @@ class VpnApiClient {
             )
             return filtered
         }
+    }
+
+    private fun sortServers(servers: List<VpnServer>, gameVersion: GameVersion): List<VpnServer> {
+        if (gameVersion != GameVersion.GLOBAL) {
+            return servers.sortedBy { it.pingMs }
+        }
+        return servers.sortedWith(
+            compareBy<VpnServer> { server ->
+                if (server.country.uppercase() in GameVersion.PREFERRED_SEA_COUNTRIES) 0 else 1
+            }.thenBy { it.pingMs }
+        )
     }
 
     @Throws(IOException::class)

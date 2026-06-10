@@ -119,10 +119,7 @@ class VpnTileService : TileService() {
             is ConnectionState.Connected -> {
                 tile.state = Tile.STATE_ACTIVE
                 val pingStr = String.format("%.0f", state.ping)
-                setSubtitle(tile, if (state.gameAccessible == true)
-                    getString(R.string.tile_subtitle_connected, state.serverIp, pingStr)
-                else
-                    getString(R.string.tile_subtitle_connected_unverified, state.serverIp, pingStr))
+                setSubtitle(tile, getString(R.string.tile_subtitle_connected, state.serverIp, pingStr))
             }
             is ConnectionState.Error -> {
                 tile.state = Tile.STATE_INACTIVE

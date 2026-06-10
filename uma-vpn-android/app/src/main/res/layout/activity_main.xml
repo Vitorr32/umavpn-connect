@@ -289,6 +289,22 @@
                     android:textColor="@color/on_surface_variant"
                     android:textSize="12sp" />
 
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchAutoLaunch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/label_auto_launch"
+                    android:textColor="@color/on_surface" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/hint_auto_launch"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="12sp" />
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

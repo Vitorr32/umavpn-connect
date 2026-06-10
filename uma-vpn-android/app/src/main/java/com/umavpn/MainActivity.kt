@@ -51,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         setupConnectButton()
         setupInstallBanner()
         setupTimeoutSeekBar()
+        setupAutoLaunchSwitch()
         observeState()
         handleIncomingIntent(intent)
     }
@@ -129,6 +130,15 @@ class MainActivity : AppCompatActivity() {
         binding.btnOpenVpnApp.setOnClickListener { openOpenVpnApp() }
     }
 
+    // ── Auto-launch switch ────────────────────────────────────────────────────
+
+    private fun setupAutoLaunchSwitch() {
+        binding.switchAutoLaunch.isChecked = manager.autoLaunchGame
+        binding.switchAutoLaunch.setOnCheckedChangeListener { _, isChecked ->
+            manager.autoLaunchGame = isChecked
+        }
+    }
+
     // ── Timeout seekbar ───────────────────────────────────────────────────────
 
     private fun setupTimeoutSeekBar() {
@@ -169,6 +179,7 @@ class MainActivity : AppCompatActivity() {
         binding.toggleGameVersion.isEnabled = isIdle
         binding.btnVersionGlobal.isEnabled = isIdle
         binding.btnVersionJapanese.isEnabled = isIdle
+        binding.switchAutoLaunch.isEnabled = isIdle
 
         when (state) {
             is ConnectionState.Idle -> {
@@ -221,28 +232,14 @@ class MainActivity : AppCompatActivity() {
 
             is ConnectionState.Connected -> {
                 binding.statusIndicator.setImageResource(R.drawable.ic_status_connected)
-                binding.tvStatus.text = if (state.gameAccessible == false)
-                    getString(R.string.status_connected_unverified)
-                else getString(R.string.status_connected)
+                binding.tvStatus.text = getString(R.string.status_connected)
                 binding.tvServer.text = getString(R.string.label_server, state.serverIp)
                 binding.tvServer.visibility = View.VISIBLE
                 binding.tvPing.text = getString(R.string.label_ping, String.format("%.0f", state.ping))
                 binding.tvPing.visibility = View.VISIBLE
                 binding.tvGameAccess.visibility = View.VISIBLE
-                when (state.gameAccessible) {
-                    true -> {
-                        binding.tvGameAccess.text = getString(R.string.label_game_accessible)
-                        binding.tvGameAccess.setTextColor(getColor(android.R.color.holo_green_light))
-                    }
-                    false -> {
-                        binding.tvGameAccess.text = getString(R.string.label_game_blocked)
-                        binding.tvGameAccess.setTextColor(getColor(android.R.color.holo_red_light))
-                    }
-                    null -> {
-                        binding.tvGameAccess.text = getString(R.string.label_game_unverified)
-                        binding.tvGameAccess.setTextColor(getColor(android.R.color.darker_gray))
-                    }
-                }
+                binding.tvGameAccess.text = getString(R.string.label_game_accessible)
+                binding.tvGameAccess.setTextColor(getColor(android.R.color.holo_green_light))
                 binding.progressBar.visibility = View.GONE
                 binding.btnToggle.text = getString(R.string.btn_disconnect)
                 binding.btnToggle.isEnabled = true

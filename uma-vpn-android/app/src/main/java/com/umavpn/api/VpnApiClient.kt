@@ -59,7 +59,11 @@ class VpnApiClient {
 
         val servers = entries.mapNotNull { entry ->
             runCatching {
-                val profile = fetchConfig(entry.ip)
+                val profile = fetchConfig(
+                    ip = entry.ip,
+                    variant = OpenVpnProfileVariant.PRIMARY,
+                    splitTunnel = gameVersion.useSplitTunnel,
+                )
                 VpnServer(
                     profile = profile,
                     remoteHost = entry.ip,
@@ -76,7 +80,12 @@ class VpnApiClient {
             throw IOException("Failed to download OpenVPN profiles for any server.")
         }
 
-        Log.d(TAG, "Loaded ${servers.size}/${entries.size} servers for ${gameVersion.label}")
+        Log.d(
+            TAG,
+            "Loaded ${servers.size}/${entries.size} servers for ${gameVersion.label} " +
+                "(variant=${OpenVpnProfileVariant.PRIMARY.apiValue}, " +
+                "splitTunnel=${gameVersion.useSplitTunnel})"
+        )
         return servers
     }
 
@@ -133,11 +142,23 @@ class VpnApiClient {
         )
     }
 
+    /**
+     * Downloads the OpenVPN inline config for [ip] using the given [variant].
+     * When [splitTunnel] is true, appends `split=true` so the API patches in
+     * `route-nopull` and game-domain routes (umavpn.top "Split tunneling" variant).
+     */
     @Throws(IOException::class)
-    private fun fetchConfig(ip: String): String {
-        val url = "$BASE_URL/api/server/$ip/config".toHttpUrl().newBuilder()
-            .addQueryParameter("variant", "current")
-            .build()
+    fun fetchConfig(
+        ip: String,
+        variant: OpenVpnProfileVariant,
+        splitTunnel: Boolean = false,
+    ): String {
+        val urlBuilder = "$BASE_URL/api/server/$ip/config".toHttpUrl().newBuilder()
+            .addQueryParameter("variant", variant.apiValue)
+        if (splitTunnel) {
+            urlBuilder.addQueryParameter("split", "true")
+        }
+        val url = urlBuilder.build()
 
         val request = Request.Builder()
             .url(url)

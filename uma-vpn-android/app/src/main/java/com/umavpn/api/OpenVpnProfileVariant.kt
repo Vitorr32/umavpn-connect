@@ -3,16 +3,22 @@ package com.umavpn.api
 /**
  * OpenVPN config variants served by api.umavpn.top.
  *
- * The umavpn.top website exposes the same selector for manual downloads:
- * - [CURRENT] — OpenVPN 2.6.x (`data-ciphers` present)
- * - [LEGACY] — OpenVPN before 2.6 (`cipher` only)
- * - [BETA] — OpenVPN after 2.7 (currently identical to [CURRENT] on the API)
+ * The official umavpn.top guide recommends **Beta** for modern clients (OpenVPN > 2.7).
+ * [CONNECT_FALLBACK_ORDER] is used when the primary variant fails to establish a tunnel.
  *
- * OpenVPN Connect (recommended on the website) uses the OpenVPN3 engine and is
- * more forgiving than OpenVPN for Android (community OpenVPN 2.x via AIDL).
+ * - [BETA] — OpenVPN > 2.7 (primary; recommended by the player guide)
+ * - [CURRENT] — OpenVPN 2.6.x (`data-ciphers` present)
+ * - [LEGACY] — OpenVPN before 2.6 (`cipher` only; VPNGate legacy encryption)
  */
 enum class OpenVpnProfileVariant(val apiValue: String) {
-    CURRENT("current"),
-    LEGACY("legacy"),
     BETA("beta"),
+    CURRENT("current"),
+    LEGACY("legacy");
+
+    companion object {
+        /** Primary variant per the umavpn.top guide, then legacy fallback. */
+        val PRIMARY = BETA
+
+        val CONNECT_FALLBACK_ORDER = listOf(BETA, LEGACY)
+    }
 }

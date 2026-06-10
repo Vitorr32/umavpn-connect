@@ -33,7 +33,8 @@ object OpenVpnProfileAdapter {
             TAG,
             "Prepared ${variant.name} profile (${profile.length} chars, " +
                 "cipher=${profile.contains("\ncipher ")}, " +
-                "data-ciphers=${profile.contains("\ndata-ciphers ")})"
+                "data-ciphers=${profile.contains("\ndata-ciphers ")}, " +
+                "splitTunnel=${profile.contains("\nroute-nopull")})"
         )
         return profile
     }

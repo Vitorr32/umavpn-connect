@@ -197,7 +197,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                     total = servers.size
                 )
 
-                val tunnel = connectVpnWithVariantFallback(server, timeoutMs)
+                val tunnel = connectVpnWithVariantFallback(server, version, timeoutMs)
                 if (!tunnel.connected) {
                     vpnFailures++
                     lastFailureDetail = tunnel.statusMessage ?: lastVpnStatusMessage
@@ -267,14 +267,15 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     )
 
     /**
-     * Tries the default API profile variant, then [OpenVpnProfileVariant.LEGACY] if the
-     * tunnel fails — mirroring the variant selector on umavpn.top for older OpenVPN builds.
+     * Tries [OpenVpnProfileVariant.PRIMARY] (beta), then [OpenVpnProfileVariant.LEGACY]
+     * if the tunnel fails — matching the umavpn.top player guide and legacy encryption fallback.
      */
     private suspend fun connectVpnWithVariantFallback(
         server: VpnServer,
+        gameVersion: GameVersion,
         timeoutMs: Long,
     ): TunnelAttempt {
-        val variants = listOf(OpenVpnProfileVariant.CURRENT, OpenVpnProfileVariant.LEGACY)
+        val variants = OpenVpnProfileVariant.CONNECT_FALLBACK_ORDER
         var lastDetail: String? = null
 
         for ((index, variant) in variants.withIndex()) {
@@ -282,7 +283,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                 Log.i(TAG, "Retrying ${server.remoteHost} with ${variant.name} profile variant")
             }
 
-            val profile = loadProfile(server, variant)
+            val profile = loadProfile(server, variant, gameVersion)
             val attempt = tryConnectVpn(server.remoteHost, profile, variant, timeoutMs)
             if (attempt.connected) {
                 return TunnelAttempt(true, variant)
@@ -300,11 +301,16 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     private suspend fun loadProfile(
         server: VpnServer,
         variant: OpenVpnProfileVariant,
+        gameVersion: GameVersion,
     ): String = withContext(Dispatchers.IO) {
-        val raw = if (variant == OpenVpnProfileVariant.CURRENT) {
+        val raw = if (variant == OpenVpnProfileVariant.PRIMARY) {
             server.profile
         } else {
-            apiClient.fetchConfig(server.remoteHost, variant)
+            apiClient.fetchConfig(
+                ip = server.remoteHost,
+                variant = variant,
+                splitTunnel = gameVersion.useSplitTunnel,
+            )
         }
         OpenVpnProfileAdapter.forOpenVpnForAndroid(raw, variant)
     }

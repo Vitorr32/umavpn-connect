@@ -59,7 +59,7 @@ class VpnApiClient {
 
         val servers = entries.mapNotNull { entry ->
             runCatching {
-                val profile = fetchConfig(entry.ip)
+                val profile = fetchConfig(entry.ip, OpenVpnProfileVariant.CURRENT)
                 VpnServer(
                     profile = profile,
                     remoteHost = entry.ip,
@@ -133,10 +133,14 @@ class VpnApiClient {
         )
     }
 
+    /**
+     * Downloads the OpenVPN inline config for [ip] using the given [variant].
+     * Exposed for per-server variant fallback during connect retries.
+     */
     @Throws(IOException::class)
-    private fun fetchConfig(ip: String): String {
+    fun fetchConfig(ip: String, variant: OpenVpnProfileVariant): String {
         val url = "$BASE_URL/api/server/$ip/config".toHttpUrl().newBuilder()
-            .addQueryParameter("variant", "current")
+            .addQueryParameter("variant", variant.apiValue)
             .build()
 
         val request = Request.Builder()

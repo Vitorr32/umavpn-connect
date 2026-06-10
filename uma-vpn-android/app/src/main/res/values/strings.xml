@@ -47,6 +47,8 @@
     <string name="settings_title">Settings</string>
     <string name="label_timeout">Connection timeout per server: %1$d s</string>
     <string name="hint_timeout">3 – 30 s. Servers that don\'t respond within this time are skipped automatically.</string>
+    <string name="label_auto_launch">Open Umamusume when connected</string>
+    <string name="hint_auto_launch">Only launches after game access is verified. Works from the Quick Settings tile too.</string>
 
     <!-- Install banner -->
     <string name="banner_install_title">OpenVPN for Android required</string>

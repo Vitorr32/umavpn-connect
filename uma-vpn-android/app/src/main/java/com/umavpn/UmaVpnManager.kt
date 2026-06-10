@@ -39,9 +39,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  *         CONNECTRETRY / AUTH_FAILED → immediate skip (faulty profile).
  *         Timeout → force disconnect, skip.
  *      b. If VPN connected: verify Cygames server reachability (HTTP test).
- *         404 → "Accessible" — set Connected state and stop.
- *         403 → IP geo-blocked for this version → disconnect, try next server.
- *         Inconclusive → stay connected but flag as unverified.
+ *         404 → "Accessible" — set Connected state, optionally launch game, stop.
+ *         403 / Inconclusive → disconnect, try next server.
  *   3. If all servers fail: emit Error state.
  */
 class UmaVpnManager private constructor(private val appContext: Context) {
@@ -54,6 +53,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         private const val PREFS_NAME = "umavpn_prefs"
         private const val PREF_TIMEOUT_SECONDS = "connect_timeout_seconds"
         private const val PREF_GAME_VERSION = "game_version_ordinal"
+        private const val PREF_AUTO_LAUNCH_GAME = "auto_launch_game"
 
         const val DEFAULT_TIMEOUT_SECONDS = 8
         const val MIN_TIMEOUT_SECONDS = 3
@@ -81,6 +81,10 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     var gameVersion: GameVersion
         get() = GameVersion.fromOrdinal(prefs.getInt(PREF_GAME_VERSION, GameVersion.GLOBAL.ordinal))
         set(value) = prefs.edit().putInt(PREF_GAME_VERSION, value.ordinal).apply()
+
+    var autoLaunchGame: Boolean
+        get() = prefs.getBoolean(PREF_AUTO_LAUNCH_GAME, false)
+        set(value) = prefs.edit().putBoolean(PREF_AUTO_LAUNCH_GAME, value).apply()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val apiClient = VpnApiClient()
@@ -193,6 +197,9 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                             gameAccessible = true
                         )
                         Log.i(TAG, "✓ Connected + game verified via ${server.remoteHost}")
+                        if (autoLaunchGame) {
+                            GameLauncher.launch(appContext, version)
+                        }
                         return@launch
                     }
                     is GameConnectivityChecker.Result.Blocked -> {
@@ -201,21 +208,15 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                         continue
                     }
                     is GameConnectivityChecker.Result.Inconclusive -> {
-                        // VPN is up but we couldn't confirm game access — stay connected
-                        // but let the user know the check was inconclusive
-                        _state.value = ConnectionState.Connected(
-                            serverIp = server.remoteHost,
-                            ping = server.pingMs,
-                            gameAccessible = null
-                        )
-                        Log.w(TAG, "? ${server.remoteHost} — game check inconclusive: ${gameResult.reason}")
-                        return@launch
+                        Log.w(TAG, "✗ ${server.remoteHost} — game check failed: ${gameResult.reason}")
+                        forceDisconnectAndWait()
+                        continue
                     }
                 }
             }
 
             _state.value = ConnectionState.Error(
-                "All ${servers.size} servers tried — none could reach the Umamusume server " +
+                "All ${servers.size} servers tried — none passed the game access check " +
                     "for the ${version.label} version. Try again in a few minutes."
             )
         }

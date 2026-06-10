@@ -6,6 +6,7 @@ enum class GameVersion(
     val siteCode: String,
     val excludeCountryCode: String?,
     val onlyCountryCode: String?,
+    val launchPackageName: String,
 ) {
     /**
      * Umamusume: Pretty Derby — Global release (Cygames worldwide).
@@ -17,6 +18,7 @@ enum class GameVersion(
         siteCode = "umag",
         excludeCountryCode = "JP",
         onlyCountryCode = null,
+        launchPackageName = "com.cygames.umamusume",
     ),
 
     /**
@@ -28,6 +30,7 @@ enum class GameVersion(
         siteCode = "uma",
         excludeCountryCode = null,
         onlyCountryCode = "JP",
+        launchPackageName = "jp.co.cygames.umamusume",
     );
 
     /** The Cygames API endpoint used to verify a server can actually reach the game. */
@@ -35,6 +38,9 @@ enum class GameVersion(
         get() = "https://api-umamusume.cygames.jp/"
 
     companion object {
+        /** ISO country codes tried first when connecting in Global mode. */
+        val PREFERRED_SEA_COUNTRIES = setOf("TH", "VN", "KH")
+
         fun fromOrdinal(ordinal: Int): GameVersion =
             entries.getOrElse(ordinal) { GLOBAL }
     }

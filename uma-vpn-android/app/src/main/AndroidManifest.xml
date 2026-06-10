@@ -18,6 +18,8 @@
     -->
     <queries>
         <package android:name="de.blinkt.openvpn" />
+        <package android:name="com.cygames.umamusume" />
+        <package android:name="jp.co.cygames.umamusume" />
         <intent>
             <action android:name="de.blinkt.openvpn.api.IOpenVPNAPIService" />
         </intent>

@@ -39,12 +39,12 @@ jobs:
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > uma-vpn-android/keystore.jks
-          cat > uma-vpn-android/keystore.properties <<EOF
-          storeFile=keystore.jks
-          storePassword=${KEYSTORE_PASSWORD}
-          keyAlias=${KEY_ALIAS}
-          keyPassword=${KEY_PASSWORD}
-          EOF
+          printf '%s\n' \
+            "storeFile=keystore.jks" \
+            "storePassword=${KEYSTORE_PASSWORD}" \
+            "keyAlias=${KEY_ALIAS}" \
+            "keyPassword=${KEY_PASSWORD}" \
+            > uma-vpn-android/keystore.properties
 
       - name: Build release APK
         run: |
@@ -62,4 +62,5 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           files: UmaVPN-v*.apk
-          generate_release_notes: true
+          generate_release_notes: false
+          overwrite_files: true

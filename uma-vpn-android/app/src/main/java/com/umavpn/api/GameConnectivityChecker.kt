@@ -1,21 +1,21 @@
 package com.umavpn.api
 
 import android.util.Log
+import com.umavpn.model.ConnectivityCheckStyle
+import com.umavpn.model.GameVersion
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 /**
- * Verifies whether the Cygames game server is reachable through the active VPN.
+ * Verifies whether the game is reachable through the active VPN.
  *
- * The test URL is `https://api-umamusume.cygames.jp/`.
- * Cygames returns:
- *   HTTP 404  →  IP is **allowed** — the game server is accessible
- *   HTTP 403  →  IP is **geo-blocked** — the game will not connect
- *   Timeout   →  Unable to determine (treat as inconclusive)
+ * Per the [umavpn.top player guide](https://www.umavpn.top):
+ * - **Japanese** — `https://api-umamusume.cygames.jp/`: 404 = allowed, 403 = blocked
+ * - **Global** — `https://umamusume.com/`: 2xx = allowed, 403 = blocked
  *
- * Because OkHttp uses the system network stack, traffic automatically
- * goes through the VPN tunnel once OpenVPN is connected.
+ * OkHttp uses the system network stack, so traffic goes through the VPN tunnel
+ * once OpenVPN is connected.
  */
 class GameConnectivityChecker {
 
@@ -41,7 +41,9 @@ class GameConnectivityChecker {
         data class Inconclusive(val reason: String) : Result()
     }
 
-    fun check(testUrl: String): Result {
+    fun check(version: GameVersion): Result = check(version.connectivityTestUrl, version.connectivityCheckStyle)
+
+    fun check(testUrl: String, style: ConnectivityCheckStyle): Result {
         return try {
             val request = Request.Builder()
                 .url(testUrl)
@@ -49,16 +51,26 @@ class GameConnectivityChecker {
                 .build()
 
             client.newCall(request).execute().use { response ->
-                Log.d(TAG, "Cygames connectivity test: HTTP ${response.code}")
-                when (response.code) {
-                    404 -> Result.Accessible
-                    403 -> Result.Blocked
-                    else -> Result.Inconclusive("Unexpected HTTP ${response.code}")
-                }
+                Log.d(TAG, "Game connectivity test ($testUrl): HTTP ${response.code}")
+                interpret(response.code, style)
             }
         } catch (e: Exception) {
             Log.w(TAG, "Connectivity check failed: ${e.message}")
             Result.Inconclusive(e.message ?: "Unknown error")
         }
     }
+
+    private fun interpret(httpCode: Int, style: ConnectivityCheckStyle): Result =
+        when (style) {
+            ConnectivityCheckStyle.CYGAMES_API -> when (httpCode) {
+                404 -> Result.Accessible
+                403 -> Result.Blocked
+                else -> Result.Inconclusive("Unexpected HTTP $httpCode")
+            }
+            ConnectivityCheckStyle.GLOBAL_WEBSITE -> when (httpCode) {
+                403 -> Result.Blocked
+                in 200..299 -> Result.Accessible
+                else -> Result.Inconclusive("Unexpected HTTP $httpCode")
+            }
+        }
 }

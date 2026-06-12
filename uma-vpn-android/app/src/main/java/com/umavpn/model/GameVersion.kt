@@ -1,5 +1,13 @@
 package com.umavpn.model
 
+/** How to interpret the post-connect HTTP probe for a [GameVersion]. */
+enum class ConnectivityCheckStyle {
+    /** Cygames JP API: HTTP 404 = allowed, 403 = geo-blocked. */
+    CYGAMES_API,
+    /** Global website: HTTP 2xx = allowed, 403 = geo-blocked. */
+    GLOBAL_WEBSITE,
+}
+
 enum class GameVersion(
     val label: String,
     /** Site filter on api.umavpn.top (matches umavpn.top checker). */
@@ -12,6 +20,9 @@ enum class GameVersion(
      * routed through the VPN (per the umavpn.top "Split tunneling" variant).
      */
     val useSplitTunnel: Boolean,
+    /** Endpoint probed after the VPN tunnel is up (see umavpn.top player guide). */
+    val connectivityTestUrl: String,
+    val connectivityCheckStyle: ConnectivityCheckStyle,
 ) {
     /**
      * Umamusume: Pretty Derby — Global release (Cygames worldwide).
@@ -24,7 +35,11 @@ enum class GameVersion(
         excludeCountryCode = "JP",
         onlyCountryCode = null,
         launchPackageName = "com.cygames.umamusume",
-        useSplitTunnel = true,
+        // Route-based split tunnel needs OpenVPN 2.7 on desktop; on Android the probe
+        // must hit umamusume.com through the full tunnel (not in the route-nopull list).
+        useSplitTunnel = false,
+        connectivityTestUrl = "https://umamusume.com/",
+        connectivityCheckStyle = ConnectivityCheckStyle.GLOBAL_WEBSITE,
     ),
 
     /**
@@ -38,11 +53,9 @@ enum class GameVersion(
         onlyCountryCode = "JP",
         launchPackageName = "jp.co.cygames.umamusume",
         useSplitTunnel = false,
+        connectivityTestUrl = "https://api-umamusume.cygames.jp/",
+        connectivityCheckStyle = ConnectivityCheckStyle.CYGAMES_API,
     );
-
-    /** The Cygames API endpoint used to verify a server can actually reach the game. */
-    val connectivityTestUrl: String
-        get() = "https://api-umamusume.cygames.jp/"
 
     companion object {
         /** ISO country codes tried first when connecting in Global mode. */

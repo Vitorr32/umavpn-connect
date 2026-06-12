@@ -211,7 +211,7 @@ class UmaVpnManager private constructor(private val appContext: Context) {
 
                 _state.value = ConnectionState.VerifyingGame(server.remoteHost)
                 val gameResult = withContext(Dispatchers.IO) {
-                    connectivityChecker.check(version.connectivityTestUrl)
+                    connectivityChecker.check(version)
                 }
 
                 when (gameResult) {

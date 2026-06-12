@@ -53,7 +53,8 @@ emulator -avd uma_vpn_api34 -no-audio -gpu swiftshader_indirect -accel off
 The app calls these at runtime (no API keys):
 
 - `https://api.umavpn.top/api/server` — server list + OpenVPN profiles (`VpnApiClient.kt`)
-- `https://api-umamusume.cygames.jp/` — post-connect geo verification (`GameConnectivityChecker.kt`)
+- `https://api.games.umamusume.jp/` — Global post-connect geo verification
+- `https://api-umamusume.cygames.jp/` — Japanese post-connect geo verification (`GameConnectivityChecker.kt`)
 
 ### Release builds
 

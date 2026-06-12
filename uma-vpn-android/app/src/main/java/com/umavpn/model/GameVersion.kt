@@ -12,6 +12,8 @@ enum class GameVersion(
      * routed through the VPN (per the umavpn.top "Split tunneling" variant).
      */
     val useSplitTunnel: Boolean,
+    /** Cygames endpoint used to verify VPN reachability for this game version. */
+    val connectivityTestUrl: String,
 ) {
     /**
      * Umamusume: Pretty Derby — Global release (Cygames worldwide).
@@ -25,6 +27,7 @@ enum class GameVersion(
         onlyCountryCode = null,
         launchPackageName = "com.cygames.umamusume",
         useSplitTunnel = true,
+        connectivityTestUrl = "https://api.games.umamusume.jp/",
     ),
 
     /**
@@ -38,11 +41,8 @@ enum class GameVersion(
         onlyCountryCode = "JP",
         launchPackageName = "jp.co.cygames.umamusume",
         useSplitTunnel = false,
+        connectivityTestUrl = "https://api-umamusume.cygames.jp/",
     );
-
-    /** The Cygames API endpoint used to verify a server can actually reach the game. */
-    val connectivityTestUrl: String
-        get() = "https://api-umamusume.cygames.jp/"
 
     companion object {
         /** ISO country codes tried first when connecting in Global mode. */

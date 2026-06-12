@@ -4,5 +4,6 @@
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api.umavpn.top</domain>
         <domain includeSubdomains="true">api-umamusume.cygames.jp</domain>
+        <domain includeSubdomains="true">api.games.umamusume.jp</domain>
     </domain-config>
 </network-security-config>

@@ -8,7 +8,10 @@ import java.util.concurrent.TimeUnit
 /**
  * Verifies whether the Cygames game server is reachable through the active VPN.
  *
- * The test URL is `https://api-umamusume.cygames.jp/`.
+ * Test URLs are version-specific (see [com.umavpn.model.GameVersion.connectivityTestUrl]):
+ *   Global   → `https://api.games.umamusume.jp/`
+ *   Japanese → `https://api-umamusume.cygames.jp/`
+ *
  * Cygames returns:
  *   HTTP 404  →  IP is **allowed** — the game server is accessible
  *   HTTP 403  →  IP is **geo-blocked** — the game will not connect

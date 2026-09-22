@@ -53,6 +53,8 @@ enum class GameVersion(
         onlyCountryCode = "JP",
         launchPackageName = "jp.co.cygames.umamusume",
         useSplitTunnel = false,
+        // Cygames retired this hostname in 2026 (NXDOMAIN). GameConnectivityChecker then
+        // reports the tunnel as "unverified" instead of failing every server.
         connectivityTestUrl = "https://api-umamusume.cygames.jp/",
         connectivityCheckStyle = ConnectivityCheckStyle.CYGAMES_API,
     );

@@ -231,15 +231,22 @@ class MainActivity : AppCompatActivity() {
             }
 
             is ConnectionState.Connected -> {
+                val verified = state.gameAccessible == true
                 binding.statusIndicator.setImageResource(R.drawable.ic_status_connected)
-                binding.tvStatus.text = getString(R.string.status_connected)
+                binding.tvStatus.text = getString(
+                    if (verified) R.string.status_connected else R.string.status_connected_unverified
+                )
                 binding.tvServer.text = getString(R.string.label_server, state.serverIp)
                 binding.tvServer.visibility = View.VISIBLE
                 binding.tvPing.text = getString(R.string.label_ping, String.format("%.0f", state.ping))
                 binding.tvPing.visibility = View.VISIBLE
                 binding.tvGameAccess.visibility = View.VISIBLE
-                binding.tvGameAccess.text = getString(R.string.label_game_accessible)
-                binding.tvGameAccess.setTextColor(getColor(android.R.color.holo_green_light))
+                binding.tvGameAccess.text = getString(
+                    if (verified) R.string.label_game_accessible else R.string.label_game_unverified
+                )
+                binding.tvGameAccess.setTextColor(
+                    getColor(if (verified) android.R.color.holo_green_light else android.R.color.holo_orange_light)
+                )
                 binding.progressBar.visibility = View.GONE
                 binding.btnToggle.text = getString(R.string.btn_disconnect)
                 binding.btnToggle.isEnabled = true

@@ -108,6 +108,8 @@ The API is used read-only — no data is sent to it.
 |---|---|
 | "OpenVPN for Android required" banner | Install the free [OpenVPN for Android](https://play.google.com/store/apps/details?id=de.blinkt.openvpn) app |
 | Connection error / CONNECTRETRY | The chosen server went offline between the API check and the connect attempt. Tap **Retry** to try the next best server |
+| Every server fails right after OpenVPN for Android updated | OpenVPN for Android 0.7.65 (Sept 2026) only keeps a profile's `cipher` line when `compat-mode` is set, and VPN Gate relays need that cipher as the non-negotiated fallback. UmaVPN now adds `compat-mode` and `data-ciphers-fallback` to every profile, so update UmaVPN. If it still fails, open OpenVPN for Android's log: "negotiated cipher not allowed" means this issue |
+| "Connected (unverified)" in Japanese mode | The Cygames probe host `api-umamusume.cygames.jp` no longer exists in DNS, so the game check cannot run. The tunnel is kept because umavpn.top pre-verifies its servers per game version |
 | Permission denied | Open the UmaVPN app and go through the permission steps manually |
 | Tile doesn't appear | The system tile service registers when the app is first installed; a reboot or toggling the app's notification permission may help |
 

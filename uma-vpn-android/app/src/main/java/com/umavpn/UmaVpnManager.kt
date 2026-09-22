@@ -41,8 +41,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  *         CONNECTRETRY / AUTH_FAILED → immediate skip (faulty profile).
  *         Timeout → force disconnect, skip.
  *      b. If VPN connected: verify Cygames server reachability (HTTP test).
- *         404 → "Accessible" — set Connected state, optionally launch game, stop.
- *         403 / Inconclusive → disconnect, try next server.
+ *         Accessible → set Connected state, optionally launch game, stop.
+ *         Unverifiable (probe host gone from DNS) → Connected but unverified, stop.
+ *         Blocked / Inconclusive → disconnect, try next server.
  *   3. If all servers fail: emit Error state.
  */
 class UmaVpnManager private constructor(private val appContext: Context) {
@@ -131,6 +132,20 @@ class UmaVpnManager private constructor(private val appContext: Context) {
             Log.w(TAG, "OpenVPN service disconnected")
             vpnService = null
         }
+
+        /** OpenVPN for Android was updated or removed: Android never revives this binding. */
+        override fun onBindingDied(name: ComponentName?) {
+            Log.w(TAG, "OpenVPN service binding died (app updated?) — rebinding")
+            vpnService = null
+            runCatching { appContext.unbindService(this) }
+            bindToOpenVpnService()
+        }
+
+        override fun onNullBinding(name: ComponentName?) {
+            Log.w(TAG, "OpenVPN service returned a null binding")
+            vpnService = null
+            runCatching { appContext.unbindService(this) }
+        }
     }
 
     init {
@@ -148,6 +163,21 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         } catch (e: SecurityException) {
             Log.e(TAG, "Security exception binding to OpenVPN service", e)
         }
+    }
+
+    /**
+     * Returns the bound OpenVPN for Android API, rebinding first if the binding was lost
+     * (e.g. after that app updated itself) and waiting briefly for the new binding.
+     */
+    private suspend fun awaitVpnService(timeoutMs: Long = 3_000L): IOpenVPNAPIService? {
+        vpnService?.let { return it }
+        Log.w(TAG, "Not bound to OpenVPN for Android — rebinding")
+        runCatching { appContext.unbindService(serviceConnection) }
+        bindToOpenVpnService()
+        withTimeoutOrNull(timeoutMs) {
+            while (vpnService == null) delay(100)
+        }
+        return vpnService
     }
 
     fun isOpenVpnInstalled(): Boolean =
@@ -172,6 +202,13 @@ class UmaVpnManager private constructor(private val appContext: Context) {
         connectJob?.cancel()
         connectJob = scope.launch {
             _state.value = ConnectionState.FetchingServers
+
+            if (awaitVpnService() == null) {
+                _state.value = ConnectionState.Error(
+                    "Not connected to OpenVPN for Android. Reopen UmaVPN (or restart the phone) and try again."
+                )
+                return@launch
+            }
 
             val serversResult = withContext(Dispatchers.IO) {
                 runCatching { apiClient.fetchServers(version) }
@@ -229,6 +266,19 @@ class UmaVpnManager private constructor(private val appContext: Context) {
                         if (autoLaunchGame) {
                             GameLauncher.launch(appContext, version)
                         }
+                        return@launch
+                    }
+                    is GameConnectivityChecker.Result.Unverifiable -> {
+                        _state.value = ConnectionState.Connected(
+                            serverIp = server.remoteHost,
+                            ping = server.pingMs,
+                            gameAccessible = null
+                        )
+                        Log.w(
+                            TAG,
+                            "✓ Connected via ${server.remoteHost} but game access could not be " +
+                                "verified (${gameResult.reason}); keeping the tunnel"
+                        )
                         return@launch
                     }
                     is GameConnectivityChecker.Result.Blocked -> {
@@ -326,11 +376,19 @@ class UmaVpnManager private constructor(private val appContext: Context) {
     ): VpnAttemptResult {
         lastVpnStatusMessage = null
 
-        val startOk = withContext(Dispatchers.IO) {
-            runCatching { vpnService?.startVPN(profile) }.isSuccess
+        val service = vpnService
+            ?: return VpnAttemptResult(false, "Lost the connection to OpenVPN for Android")
+
+        val startError = withContext(Dispatchers.IO) {
+            runCatching { service.startVPN(profile) }.exceptionOrNull()
         }
-        if (!startOk) {
-            return VpnAttemptResult(false, "startVPN() rejected the inline profile")
+        if (startError != null) {
+            Log.w(TAG, "startVPN() rejected the profile for $serverIp (${variant.name})", startError)
+            return VpnAttemptResult(
+                false,
+                "OpenVPN for Android rejected the profile: " +
+                    (startError.message ?: startError.javaClass.simpleName)
+            )
         }
 
         val result = withTimeoutOrNull(timeoutMs) {
@@ -375,9 +433,8 @@ class UmaVpnManager private constructor(private val appContext: Context) {
 
         val hint = when {
             vpnFailures > 0 ->
-                " If manual import works in OpenVPN Connect, note that this app uses " +
-                    "OpenVPN for Android with a different engine — try updating that app " +
-                    "or increasing the connect timeout."
+                " Check the log inside OpenVPN for Android for the reason, " +
+                    "or increase the connect timeout."
             else ->
                 " The VPN tunnel came up but the Cygames geo-check failed — try again later."
         }
